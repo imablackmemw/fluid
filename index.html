@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fluid Browser — Liquid Glass</title>
+    <style>
+        /* ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И СБРОС ========== */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.75);
+            --accent: #00e6c0;
+            --accent2: #6c5ce7;
+            --blur-amount: 25px;
+            --transition-speed: 0.4s;
+            --font-main: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a14;
+            overflow: hidden;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        /* ========== АНИМИРОВАННЫЙ ГРАДИЕНТНЫЙ ФОН ========== */
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #0a0a14, #0f2027, #203a43, #2c5364, #1a1a3e, #2d1b4e);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            25% {
+                background-position: 100% 0%;
+            }
+            50% {
+                background-position: 100% 100%;
+            }
+            75% {
+                background-position: 0% 100%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* ========== CANVAS ДЛЯ ПЛАВАЮЩИХ ПУЗЫРЕЙ ========== */
+        #bubbleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(2px);
+        }
+
+        /* ========== ГЛАВНАЯ СТЕКЛЯННАЯ ПАНЕЛЬ ========== */
+        .glass-panel {
+            position: relative;
+            width: 90%;
+            max-width: 560px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+            -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+            border-radius: 32px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow), inset 0 0 30px rgba(255, 255, 255, 0.05);
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+            will-change: transform;
+            z-index: 10;
+        }
+
+        /* Эффект свечения по краям панели */
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 34px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.1), rgba(255,255,255,0.4));
+            z-index: -1;
+            opacity: 0.6;
+            filter: blur(12px);
+        }
+
+        /* ========== ЛОГОТИП ========== */
+        .logo-img {
+            width: 200px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 12px rgba(0, 230, 192, 0.7));
+            transition: filter 0.3s ease;
+        }
+
+        .logo-img:hover {
+            filter: drop-shadow(0 0 20px rgba(0, 230, 192, 1));
+        }
+
+        /* ========== ЗАГОЛОВОК И ПОДЗАГОЛОВОК ========== */
+        .main-title {
+            font-size: clamp(2rem, 6vw, 3rem);
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            background: linear-gradient(to right, #ffffff, #e0e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sub-title {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            max-width: 400px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.6;
+        }
+
+        /* ========== КНОПКИ ========== */
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 2.5rem;
+        }
+
+        .glass-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: white;
+            transition: all var(--transition-speed) cubic-bezier(0.25, 0.8, 0.25, 1.2);
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+
+        /* Световой блик при наведении */
+        .glass-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.03);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-btn:hover::after {
+            left: 100%;
+        }
+
+        .glass-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Варианты кнопок */
+        .btn-primary {
+            background: rgba(0, 230, 192, 0.15);
+            border-color: rgba(0, 230, 192, 0.5);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: rgba(0, 230, 192, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 230, 192, 0.3);
+        }
+
+        .btn-support {
+            background: rgba(108, 92, 231, 0.15);
+            border-color: rgba(108, 92, 231, 0.5);
+        }
+
+        .btn-support:hover {
+            background: rgba(108, 92, 231, 0.3);
+            box-shadow: 0 10px 30px rgba(108, 92, 231, 0.3);
+        }
+
+        /* ========== БЛОК "НАШЛИ ОШИБКУ?" ========== */
+        .error-section {
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .error-section span {
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+
+        .email-link {
+            color: #00e6c0;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            display: inline-block;
+        }
+
+        .email-link:hover {
+            color: #ffffff;
+            text-shadow: 0 0 15px #00e6c0, 0 0 30px #00e6c0;
+            transform: scale(1.05);
+        }
+
+        /* ========== АДАПТИВНОСТЬ ========== */
+        @media (max-width: 640px) {
+            .glass-panel {
+                padding: 2rem 1.5rem;
+                margin: 0 10px;
+            }
+            .logo-img {
+                width: 160px;
+                height: 48px;
+            }
+            .main-title {
+                font-size: 2rem;
+            }
+            .sub-title {
+                font-size: 0.9rem;
+            }
+            .glass-btn {
+                font-size: 1rem;
+                padding: 0.8rem 1.2rem;
+            }
+        }
+
+        /* Дополнительные анимации для пузырей (будут создаваться через JS) */
+        @keyframes float {
+            0% { transform: translateY(0px) scale(1); opacity: 0.6; }
+            50% { transform: translateY(-20px) scale(1.05); opacity: 0.8; }
+            100% { transform: translateY(0px) scale(1); opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Фоновый градиент -->
+    <div class="gradient-bg"></div>
+
+    <!-- Canvas для пузырей -->
+    <canvas id="bubbleCanvas"></canvas>
+
+    <!-- Стеклянная панель -->
+    <div class="glass-panel" id="glassPanel">
+        <img src="logo.png" alt="Fluid Browser Logo" class="logo-img">
+        <h1 class="main-title">Fluid Browser</h1>
+        <p class="sub-title">Невероятно плавный, лёгкий и современный браузер, созданный для комфортного сёрфинга.</p>
+        <div class="button-group">
+            <a href="http://Example.com" class="glass-btn btn-primary" target="_blank">📥 Скачать</a>
+            <a href="http://Example.com" class="glass-btn btn-support" target="_blank">❤️ Поддержите меня!</a>
+        </div>
+        <div class="error-section">
+            <span>Нашли ошибку?</span>
+            <a href="mailto:litelabssupport@gmail.com" class="email-link">litelabssupport@gmail.com</a>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ========== ЭФФЕКТ TILT (НАКЛОН ПАНЕЛИ) ==========
+            const panel = document.getElementById('glassPanel');
+            let isHovering = false;
+
+            function handleMouseMove(e) {
+                if (!isHovering) return;
+                const rect = panel.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const deltaX = (x - centerX) / centerX;
+                const deltaY = (y - centerY) / centerY;
+                const maxTilt = 8; // градусов
+                const rotateX = deltaY * -maxTilt;
+                const rotateY = deltaX * maxTilt;
+                panel.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.01)`;
+            }
+
+            function resetTilt() {
+                panel.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) scale(1)';
+            }
+
+            panel.addEventListener('mouseenter', () => {
+                isHovering = true;
+            });
+
+            panel.addEventListener('mouseleave', () => {
+                isHovering = false;
+                resetTilt();
+            });
+
+            document.addEventListener('mousemove', handleMouseMove);
+
+            // Поддержка гироскопа для мобильных устройств
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', function(e) {
+                    if (!isHovering) return; // на мобильных устройствах понятие hover'а отличается, будем считать что всегда активно при касании? Упростим: включаем tilt на мобильных если панель видна.
+                    // Чтобы не конфликтовать с мышью, на мобильных будем использовать касания. Но для гироскопа нужен другой подход.
+                    // В рамках этого кода реализуем гироскопический tilt только когда панель в фокусе (можно добавить тач-события).
+                    // Для простоты оставим мышиную версию как основную. Гироскоп можно добавить при необходимости.
+                });
+            }
+
+            // Для мобильных устройств добавим touch-события для tilt?
+            // На смартфонах нет постоянного hover, но можно включить tilt при касании и двигать пальцем.
+            let touchActive = false;
+            panel.addEventListener('touchstart', (e) => {
+                touchActive = true;
+                isHovering = true;
+            });
+            panel.addEventListener('touchend', () => {
+                touchActive = false;
+                isHovering = false;
+                resetTilt();
+            });
+            panel.addEventListener('touchmove', (e) => {
+                if (!touchActive) return;
+                const touch = e.touches[0];
+                const rect = panel.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const deltaX = (x - centerX) / centerX;
+                const deltaY = (y - centerY) / centerY;
+                const maxTilt = 12;
+                const rotateX = deltaY * -maxTilt;
+                const rotateY = deltaX * maxTilt;
+                panel.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.01)`;
+            });
+
+            // ========== СИСТЕМА ПЛАВАЮЩИХ ПУЗЫРЕЙ (Canvas) ==========
+            const canvas = document.getElementById('bubbleCanvas');
+            const ctx = canvas.getContext('2d');
+            let bubbles = [];
+            const maxBubbles = 25;
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            class Bubble {
+                constructor() {
+                    this.reset(true);
+                }
+                reset(randomY = false) {
+                    this.x = Math.random() * canvas.width;
+                    this.y = randomY ? Math.random() * canvas.height : canvas.height + Math.random() * 100;
+                    this.radius = Math.random() * 60 + 20;
+                    this.speed = Math.random() * 0.4 + 0.2;
+                    this.opacity = Math.random() * 0.3 + 0.1;
+                    this.wobble = Math.random() * 2 * Math.PI;
+                    this.wobbleSpeed = (Math.random() - 0.5) * 0.02;
+                }
+                update() {
+                    this.y -= this.speed;
+                    this.wobble += this.wobbleSpeed;
+                    const xOffset = Math.sin(this.wobble) * 0.5;
+                    this.x += xOffset;
+                    if (this.y < -this.radius) {
+                        this.reset();
+                        this.y = canvas.height + this.radius;
+                    }
+                    if (this.x < -this.radius) this.x = canvas.width + this.radius;
+                    if (this.x > canvas.width + this.radius) this.x = -this.radius;
+                }
+                draw(ctx) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    const gradient = ctx.createRadialGradient(this.x - this.radius*0.3, this.y - this.radius*0.3, this.radius*0.1, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, `rgba(255, 255, 255, ${this.opacity * 1.2})`);
+                    gradient.addColorStop(0.7, `rgba(200, 240, 255, ${this.opacity})`);
+                    gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                    // Легкая обводка для стеклянного эффекта
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity * 0.5})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            // Создаем пузыри
+            for (let i = 0; i < maxBubbles; i++) {
+                bubbles.push(new Bubble());
+            }
+
+            function animateBubbles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                bubbles.forEach(b => {
+                    b.update();
+                    b.draw(ctx);
+                });
+                requestAnimationFrame(animateBubbles);
+            }
+            animateBubbles();
+
+            // Дополнительно: добавим немного интерактивных пузырей при клике? Можно, но не обязательно.
+
+        })();
+    </script>
+</body>
+</html>
